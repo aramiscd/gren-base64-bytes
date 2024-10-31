@@ -54,8 +54,7 @@ which [`fromBytes`](#fromBytes) uses, returns a `Maybe String`.
 fromString : String -> Maybe String
 fromString string =
     string
-        |> Bytes.Encode.string
-        |> Bytes.Encode.encode
+        |> Bytes.fromString
         |> fromBytes
 
 
@@ -84,7 +83,7 @@ toString b64String =
 
         Just b64Bytes ->
             Bytes.Decode.decode
-                (Bytes.Decode.string (Bytes.width b64Bytes))
+                (Bytes.Decode.string (Bytes.length b64Bytes))
                 b64Bytes
 
 

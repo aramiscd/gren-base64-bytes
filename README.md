@@ -1,6 +1,8 @@
 # Base64
 
-This is an Elm package for encoding and decoding Base64 strings.
+__todo: update readme__
+
+This is an ~~Elm~~ Gren package for encoding and decoding Base64 strings.
 
 You can [read more about Base64 on Wikipedia][wiki],
 but basically you can use Base64 to encode bytes in plain text.

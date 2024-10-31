@@ -1,6 +1,5 @@
 module Tests exposing (suite)
 
-import Base64
 import Bytes exposing (Bytes)
 import Bytes.Decode as D
 import Bytes.Encode as E
@@ -27,23 +26,23 @@ suite =
                 \_ ->
                     Expect.pass
             , decodeFuzz "Length is 0 mod 4" <|
-                \( _, str ) ->
+                \{ v1 = _, v2 = str } ->
                     str
                         |> String.length
                         |> modBy 4
                         |> Expect.equal 0
             , decodeFuzz "Length is 3/4 original length" <|
-                \( ints, str ) ->
+                \{ v1 = ints, v2 = str } ->
                     str
                         |> String.length
                         |> Expect.equal (4 * ceiling (toFloat (List.length ints) / 3))
             , decodeFuzz "Made up of valid characters" <|
-                \( _, str ) ->
+                \{ v1 = _, v2 = str } ->
                     str
                         |> String.all isValidChar
                         |> Expect.equal True
             , decodeFuzz "Only the last characters can be '='" <|
-                \( ints, str ) ->
+                \{ v1 = ints, v2 = str } ->
                     isValidB64String str |> Expect.equal True
             , test "lots and lots of bytes" <|
                 \_ ->
@@ -73,8 +72,8 @@ suite =
             , test "AA -> 0" <|
                 \_ ->
                     expectJust [ 0 ] (encodeStringToInts "AA")
-            , fuzz (Fuzz.tuple ( b64Char, b64Char )) "omitted characters are treaded as padding (2 padding)" <|
-                \( c1, c2 ) ->
+            , fuzz (Fuzz.tuple { v1 = b64Char, v2 = b64Char }) "omitted characters are treaded as padding (2 padding)" <|
+                \{ v1 = c1, v2 = c2 } ->
                     let
                         with2Padding =
                             encodeStringToInts (String.fromList [ c1, c2, '=', '=' ])
@@ -95,8 +94,8 @@ suite =
                             ]
                     in
                     Expect.all tests with2Padding
-            , fuzz (Fuzz.tuple3 ( b64Char, b64Char, b64Char )) "omitted characters are treaded as padding (1 padding)" <|
-                \( c1, c2, c3 ) ->
+            , fuzz (Fuzz.tuple3 { v1 = b64Char, v2 = b64Char, v3 = b64Char }) "omitted characters are treaded as padding (1 padding)" <|
+                \{ v1 = c1, v2 = c2, v3 = c3 } ->
                     let
                         withPadding =
                             encodeStringToInts (String.fromList [ c1, c2, c3, '=' ])
@@ -113,7 +112,7 @@ suite =
                 \_ ->
                     Expect.pass
             , encodeFuzz "Length is 4/3 original length" <|
-                \( ints, str ) ->
+                \{ v1 = ints, v2 = str } ->
                     str
                         |> String.length
                         |> Expect.equal (4 * ceiling (toFloat (List.length ints) / 3))
@@ -134,13 +133,13 @@ suite =
             ]
         , describe "identities"
             [ encodeFuzz "encode >> decode == identity" <|
-                \( ints, str ) ->
+                \{ v1 = ints, v2 = str } ->
                     str
                         |> encodeStringToInts
                         |> Maybe.andThen decodeIntsToString
                         |> expectJust str
             , decodeFuzz "decode >> encode == identity" <|
-                \( ints, _ ) ->
+                \{ v1 = ints, v2 = _ } ->
                     ints
                         |> decodeIntsToString
                         |> Maybe.andThen encodeStringToInts
@@ -210,11 +209,11 @@ fuzzerFromList list =
 b64Char : Fuzzer Char
 b64Char =
     Fuzz.frequency
-        [ ( 10, Fuzz.map Char.fromCode (Fuzz.intRange 65 90) )
-        , ( 10, Fuzz.map Char.fromCode (Fuzz.intRange 97 122) )
-        , ( 5, Fuzz.map Char.fromCode (Fuzz.intRange 48 57) )
-        , ( 1, Fuzz.constant '+' )
-        , ( 1, Fuzz.constant '/' )
+        [ { v1 = 10, v2 = Fuzz.map Char.fromCode (Fuzz.intRange 65 90) }
+        , { v1 = 10, v2 = Fuzz.map Char.fromCode (Fuzz.intRange 97 122) }
+        , { v1 = 5, v2 = Fuzz.map Char.fromCode (Fuzz.intRange 48 57) }
+        , { v1 = 1, v2 = Fuzz.constant '+' }
+        , { v1 = 1, v2 = Fuzz.constant '/' }
         ]
 
 
@@ -273,14 +272,14 @@ encodeStringToInts str =
 
 exactly : Int -> D.Decoder a -> D.Decoder (List a)
 exactly width elementDecoder =
-    D.loop ( width, [] )
-        (\( remaining, accum ) ->
+    D.loop { v1 = width, v2 = [] }
+        (\{ v1 = remaining, v2 = accum } ->
             if remaining <= 0 then
                 D.succeed <| D.Done (List.reverse accum)
 
             else
                 elementDecoder
-                    |> D.map (\v -> D.Loop ( remaining - 1, v :: accum ))
+                    |> D.map (\v -> D.Loop { v1 = remaining - 1, v2 = v :: accum })
         )
 
 
@@ -288,7 +287,7 @@ exactly width elementDecoder =
 -- TEST UTILS
 
 
-decodeFuzz : String -> (( List Int, String ) -> Expectation) -> Test
+decodeFuzz : String -> ({ v1 : List Int, v2 : String } -> Expectation) -> Test
 decodeFuzz title expectation =
     fuzz uint8s title <|
         \ints ->
@@ -297,10 +296,10 @@ decodeFuzz title expectation =
                     Expect.fail "Couldn't decode bytes"
 
                 Just str ->
-                    expectation ( ints, str )
+                    expectation { v1 = ints, v2 = str }
 
 
-encodeFuzz : String -> (( List Int, String ) -> Expectation) -> Test
+encodeFuzz : String -> ({ v1 : List Int, v2 : String } -> Expectation) -> Test
 encodeFuzz title expectation =
     fuzz b64String title <|
         \str ->
@@ -309,7 +308,7 @@ encodeFuzz title expectation =
                     Expect.fail "Couldn't encode string"
 
                 Just ints ->
-                    expectation ( ints, str )
+                    expectation { v1 = ints, v2 = str }
 
 
 expectJust : a -> Maybe a -> Expectation
